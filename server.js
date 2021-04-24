@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 
+const PORT = process.env.PORT || 6969
+
 //MIDDLE WARE
 app.use(cors());
 app.use(express.json());
@@ -96,7 +98,7 @@ app.get("/teacher/:id", function (req, res) {
 
 //What is difference between patch and put? What is patch?
 
-app.listen(6969);
+app.listen(PORT , ()=>{console.log(`Server running on port ${PORT}`)});
 
 // app.put("/teacher", function (req, res) {
 //   let teacherLinkID = req.body.id;
