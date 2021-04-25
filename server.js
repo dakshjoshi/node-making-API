@@ -1,8 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-
-const PORT = process.env.PORT || 6969
+require("dotenv").config();
+const mongodb = require("mongodb");
+const URL = process.env.DATABASE_OH_YEAH;
+const DB = "studentTeacherProject";
+const PORT = process.env.PORT || 6969;
 
 //MIDDLE WARE
 app.use(cors());
@@ -14,104 +17,144 @@ app.get("/", function (req, res) {
 
 let students = [];
 
-app.post("/student", function (req, res) {
-  if (req.body.id == "" || req.body.id == undefined) {
-    req.body.id = students.length + 1;
+app.post("/student", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
+    let user = await db.collection("student").insertOne(req.body);
+    await connection.close();
+    console.log(user);
+
+    res.json("data added");
+  } catch (error) {
+    res.send(error);
   }
-
-  students.push(req.body);
-
-  console.log(students);
-
-  res.json("data added");
 });
 
-app.get("/student", function (req, res) {
-  res.json(students);
+app.get("/student", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
+    let users = await db.collection("student").find().toArray();
+    await connection.close();
+
+    res.send(users);
+  } catch (error) {
+    res.send(error);
+  }
 });
 
-app.get("/student/:id", function (req, res) {
-  let studentLinkID = req.params.id;
-  let student = students.filter((da) => da.id == studentLinkID);
-  res.json(student);
+app.get("/student/:id", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
+    let user = await db
+      .collection("student")
+      .findOne({ _id: mongodb.ObjectId(req.params.id) });
+    await connection.close();
+    res.json(user);
+  } catch (error) {
+    res.send(error);
+  }
 });
 
-app.put("/student", function (req, res) {
-  // const studentLinkID = req.params.id;
-  // console.log(studentLinkID);
+app.put("/student", async function (req, res) {
+  try {
+    //To do later
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
 
-  let student = students.filter((stu) => stu.id == req.body.studentID);
-  console.log(student);
-  console.log(req.body);
+    let teacher = await db
+      .collection("teachers")
+      .findOne({ _id: mongodb.ObjectId(req.body.teacherID) });
 
-  let teacher = teachers.filter((teacher) => teacher.id == req.body.teacherID);
-  console.log(teacher);
+    let student = await db.collection("student").updateOne(
+      { _id: mongodb.ObjectId(req.body.studentID) },
+      {
+        $set: {
+          teacher: teacher.teacher,
+        },
+      }
+    );
 
-  student[0].teacher = teacher[0].teacher;
-  console.log(student);
+    await connection.close();
 
-  res.json({
-    message: "Data is updated",
-  });
+    res.json({
+      message: "Data is updated",
+    });
+  } catch (error) {
+    res.send(error);
+  }
 });
 
 let teachers = [];
 
-app.post("/teacher", function (req, res) {
-  if (req.body.id == "" || req.body.id == undefined) {
-    req.body.id = teachers.length + 1;
+app.post("/teacher", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
+    let user = await db.collection("teachers").insertOne(req.body);
+    await connection.close();
+    console.log(user);
+
+    res.json({ message: "teacher data added" });
+  } catch (error) {
+    res.send(error);
   }
-  console.log(req);
-  teachers.push(req.body);
-  console.log(teachers);
-
-  res.json({ message: "teacher data added" });
 });
 
-app.put("/teacher", function (req, res) {
-  let teacherLinkID = req.body.id;
-  let teacherData = teachers.filter((teacher) => teacher.id == teacherLinkID);
-  console.log(teacherData);
+// NOT DONE
+app.put("/teacher", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
 
-  let assignedStudents = req.body.students;
-  console.log(assignedStudents);
+    let student = await db
+      .collection("student")
+      .findOne({ _id: mongodb.ObjectId(req.body.studentID) });
 
-  teacherData[0].students = assignedStudents;
+    let teacher = await db.collection("teachers").updateOne(
+      { _id: mongodb.ObjectId(req.body.teacherID) },
+      {
+        $push: {
+          students: student.student,
+        },
+      }
+    );
 
-  console.log(teacherData);
+    await connection.close();
 
-  res.json({
-    message: "students recieved",
-  });
+    res.json({
+      message: "Data is updated",
+    });
+  } catch (error) {
+    res.send(error);
+  }
 });
 
-app.get("/teacher", function (req, res) {
-  res.json(teachers);
+app.get("/teacher", async function (req, res) {
+  let connection = await mongodb.connect(URL);
+  let db = connection.db(DB);
+  let users = await db.collection("teachers").find().toArray();
+  await connection.close();
+  res.json(users);
 });
 
-app.get("/teacher/:id", function (req, res) {
-  let teacherLinkID = req.params.id;
-  let teacherData = teachers.filter((teacher) => teacher.id == teacherLinkID);
-
-  res.send(teacherData);
+app.get("/teacher/:id", async function (req, res) {
+  try {
+    let connection = await mongodb.connect(URL);
+    let db = connection.db(DB);
+    let user = await db
+      .collection("teachers")
+      .findOne({ _id: mongodb.ObjectId(req.params.id) });
+    await connection.close();
+    res.json(user);
+  } catch (error) {
+    res.send(error);
+  }
 });
 
-//What is difference between patch and put? What is patch?
+app.listen(PORT, () => {
+  console.log(`Server is running in ${PORT}`);
+});
 
-app.listen(PORT , ()=>{console.log(`Server running on port ${PORT}`)});
-
-// app.put("/teacher", function (req, res) {
-//   let teacherLinkID = req.body.id;
-//   let teacherData = teachers.filter((teacher) => teacher.id == teacherLinkID);
-//   console.log(teacherData);
-
-//   let assignedStudents = req.body.students;
-
-//   teacherData[0].students = assignedStudents;
-
-//   console.log(teacherData);
-
-//   res.json({
-//     message: "students recieved",
-//   });
-// });
